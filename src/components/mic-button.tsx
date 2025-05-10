@@ -70,9 +70,48 @@ export default function MicButton({
     }
   }, []);
 
+  // Cleanup function to properly release microphone resources
+  const cleanupMicResources = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    // Disconnect any audio nodes
+    if (microphoneRef.current) {
+      microphoneRef.current.disconnect();
+      microphoneRef.current = null;
+    }
+
+    if (analyserRef.current) {
+      analyserRef.current.disconnect();
+      analyserRef.current = null;
+    }
+
+    // Close audio context
+    if (audioContextRef.current?.state !== "closed") {
+      audioContextRef.current
+        ?.close()
+        .catch((err) => console.error("Error closing audio context:", err));
+      audioContextRef.current = null;
+    }
+
+    // Stop all tracks in the stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    // Reset sound level
+    setSoundLevel(0);
+  };
+
   // Initialize microphone
   const initMicrophone = async () => {
-    if (audioContextRef.current || !isActive) return;
+    // Clean up any existing resources first
+    cleanupMicResources();
+
+    if (!isActive) return;
 
     try {
       // First check if we're in a secure context (HTTPS)
@@ -190,42 +229,28 @@ export default function MicButton({
     animationFrameRef.current = requestAnimationFrame(checkSound);
   };
 
-  // Cleanup resources when component unmounts or isActive changes
+  // Effect to handle active state changes
   useEffect(() => {
-    if (isActive && permissionState === "granted") {
-      startListening();
-    } else {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+    if (isActive) {
+      if (permissionState === "granted") {
+        // If permission is already granted, just start listening
+        startListening();
+      } else if (
+        permissionState !== "denied" &&
+        permissionState !== "unsupported"
+      ) {
+        // If not denied or unsupported, try to initialize
+        initMicrophone();
       }
+    } else {
+      // If not active, clean up resources
+      cleanupMicResources();
     }
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      cleanupMicResources();
     };
   }, [isActive, permissionState]);
-
-  // Cleanup audio resources on unmount
-  useEffect(() => {
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-
-      if (audioContextRef.current?.state !== "closed") {
-        audioContextRef.current
-          ?.close()
-          .catch((err) => console.error("Error closing audio context:", err));
-      }
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, []);
 
   // Add a manual blow function that can be called when clicking on the microphone icon
   const handleManualBlow = () => {
@@ -253,7 +278,7 @@ export default function MicButton({
           permissionState === "granted"
             ? "bg-gradient-to-r from-pink-500 to-pink-600"
             : "bg-white/80"
-        } backdrop-blur-sm rounded-full px-4 py-3 shadow-lg border border-pink-100`}
+        } backdrop-blur-sm rounded-full px-4 py-3 shadow-lg border border-pink-100 cursor-pointer`}
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.3 }}

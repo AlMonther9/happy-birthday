@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import BirthdayCake from "@/components/birthday-cake";
@@ -36,6 +36,10 @@ export default function BirthdayCard({
   const [showCakeTooltip, setShowCakeTooltip] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
 
+  // Refs for audio elements to prevent the "Failed to load" error
+  const blowCandleAudioRef = useRef<HTMLAudioElement | null>(null);
+  const magicWandAudioRef = useRef<HTMLAudioElement | null>(null);
+
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
@@ -63,6 +67,16 @@ export default function BirthdayCard({
     setMicActive(true);
     setShowCakeTooltip(true);
 
+    // Preload audio files
+    if (typeof Audio !== "undefined") {
+      blowCandleAudioRef.current = new Audio("/sounds/blow-candle.mp3");
+      magicWandAudioRef.current = new Audio("/sounds/magic-wand.mp3");
+
+      // Preload the audio files
+      blowCandleAudioRef.current.load();
+      magicWandAudioRef.current.load();
+    }
+
     const timer = setTimeout(() => {
       setShowNote(false);
     }, 7000);
@@ -78,10 +92,20 @@ export default function BirthdayCard({
     setShowCakeTooltip(false);
     setMessage(`عيد ميلاد سعيد يا ${recipientName} 🎉`);
 
-    // Play sound effect
-    if (mounted) {
-      const audio = new Audio("/sounds/blow-candle.mp3");
-      audio.play().catch((err) => console.error("Audio error:", err));
+    // Play sound effect with error handling
+    if (mounted && blowCandleAudioRef.current) {
+      blowCandleAudioRef.current.play().catch((err) => {
+        console.error("Audio error:", err);
+        // Create a new audio instance as fallback
+        try {
+          const fallbackAudio = new Audio("/sounds/blow-candle.mp3");
+          fallbackAudio
+            .play()
+            .catch((e) => console.warn("Fallback audio failed:", e));
+        } catch (fallbackErr) {
+          console.warn("Could not create fallback audio:", fallbackErr);
+        }
+      });
     }
 
     // Vibration feedback if supported
@@ -135,9 +159,19 @@ export default function BirthdayCard({
   };
 
   const handleWishSent = async (wish: string) => {
-    if (mounted) {
-      const audio = new Audio("/sounds/magic-wand.mp3");
-      audio.play().catch((err) => console.error("Audio error:", err));
+    if (mounted && magicWandAudioRef.current) {
+      magicWandAudioRef.current.play().catch((err) => {
+        console.error("Audio error:", err);
+        // Create a new audio instance as fallback
+        try {
+          const fallbackAudio = new Audio("/sounds/magic-wand.mp3");
+          fallbackAudio
+            .play()
+            .catch((e) => console.warn("Fallback audio failed:", e));
+        } catch (fallbackErr) {
+          console.warn("Could not create fallback audio:", fallbackErr);
+        }
+      });
     }
 
     setShowWishForm(false);

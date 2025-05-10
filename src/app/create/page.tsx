@@ -171,7 +171,7 @@ export default function CreatePage() {
                         <button
                           type="button"
                           onClick={() => setGender("male")}
-                          className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-all ${
+                          className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-all cursor-pointer ${
                             gender === "male"
                               ? "bg-blue-100 text-blue-600 ring-2 ring-blue-400"
                               : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -190,7 +190,7 @@ export default function CreatePage() {
                         <button
                           type="button"
                           onClick={() => setGender("female")}
-                          className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-all ${
+                          className={`flex flex-col items-center gap-1 p-3 rounded-lg transition-all cursor-pointer ${
                             gender === "female"
                               ? "bg-pink-100 text-pink-600 ring-2 ring-pink-400"
                               : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -212,7 +212,7 @@ export default function CreatePage() {
                   <motion.div variants={item}>
                     <Button
                       type="submit"
-                      className="w-full h-12 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white shadow-md hover:shadow-lg transition-all"
+                      className="w-full h-12 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white shadow-md hover:shadow-lg transition-all cursor-pointer"
                       disabled={isLoading}
                     >
                       {isLoading ? (
