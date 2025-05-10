@@ -177,3 +177,13 @@ If you have any questions or suggestions, feel free to open an issue or contact 
 
 Made with ❤️ by AlMonther
 \`\`\`
+
+
+## Authors <img src="https://cdn-icons-png.flaticon.com/128/2463/2463510.png" width=50 align=center>
+
+* AlMonther Abdulhafeez <a href="https://github.com/AlMonther9" a>
+<br/>
+## 🔗 Connect with Me
+
+- 📧 Email: [ealmonzer667@gmail.com](mailto:ealmonzer667@gmail.com)
+- 💼 LinkedIn: [AlMonther Abdulhafeez](https://www.linkedin.com/in/almonther-abdulhafeez-a3a48a267)
