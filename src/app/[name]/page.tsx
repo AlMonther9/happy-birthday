@@ -1,8 +1,27 @@
 import { Suspense } from "react";
 import BirthdayCard from "@/components/birthday-card";
+import { notFound } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-export default function Home() {
+interface NamePageProps {
+  params: {
+    name: string;
+  };
+  searchParams: {
+    gender?: string;
+  };
+}
+
+export default function NamePage({ params, searchParams }: NamePageProps) {
+  // Decode the URL-encoded name
+  const decodedName = decodeURIComponent(params.name);
+  const gender = searchParams.gender === "female" ? "female" : "male";
+
+  // Validate the name (optional)
+  if (!decodedName || decodedName.length > 50) {
+    return notFound();
+  }
+
   return (
     <main className="min-h-dvh flex items-center justify-center p-4 overflow-hidden">
       <Suspense
@@ -15,7 +34,7 @@ export default function Home() {
           </div>
         }
       >
-        <BirthdayCard />
+        <BirthdayCard name={decodedName} gender={gender} />
       </Suspense>
     </main>
   );
