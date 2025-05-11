@@ -26,22 +26,22 @@ An interactive birthday celebration web application built with Next.js, React, a
 ### Installation
 
 1. Clone the repository:
-   \`\`\`bash
+   ```
    git clone https://github.com/yourusername/happy-birthday.git
    cd happy-birthday
-   \`\`\`
+   ```
 
 2. Install dependencies:
-   \`\`\`bash
+ ```
    npm install
    # or
    yarn install
-   \`\`\`
+  ```
 
 3. Create the sounds directory and add sound files:
-   \`\`\`bash
+  ```
    mkdir -p public/sounds
-   \`\`\`
+  ```
    
    You'll need to add these sound files:
    - `public/sounds/blow-candle.mp3` - Sound for when candles are blown out
@@ -50,17 +50,17 @@ An interactive birthday celebration web application built with Next.js, React, a
    You can find free sound effects at websites like [Freesound](https://freesound.org/), [Pixabay](https://pixabay.com/sound-effects/), or [Zapsplat](https://www.zapsplat.com/).
 
 4. Start the development server:
-   \`\`\`bash
+  ```
    npm run dev
    # or
    yarn dev
-   \`\`\`
+  ```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
 ## 🧩 Project Structure
 
-\`\`\`
+```
 happy-birthday/
 ├── public/
 │   ├── sounds/
@@ -98,7 +98,7 @@ happy-birthday/
 │   │   └── use-toast.ts
 │   └── lib/
 │       └── utils.ts
-\`\`\`
+```
 
 ## 🔧 Usage
 
@@ -123,7 +123,7 @@ Contributions are welcome! Here's how you can contribute:
 1. Fork the repository
 2. Create a new branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Commit your changes (`git commit -m 'feat: Add some amazing feature'`)
 5. Push to the branch (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
 
@@ -172,18 +172,11 @@ If sound effects aren't playing:
 ## 📞 Contact
 
 If you have any questions or suggestions, feel free to open an issue or contact the maintainer.
-
----
-
-Made with ❤️ by AlMonther
-\`\`\`
-
-
-## Authors <img src="https://cdn-icons-png.flaticon.com/128/2463/2463510.png" width=50 align=center>
-
-* AlMonther Abdulhafeez <a href="https://github.com/AlMonther9" a>
-<br/>
-## 🔗 Connect with Me
-
+or
 - 📧 Email: [ealmonzer667@gmail.com](mailto:ealmonzer667@gmail.com)
 - 💼 LinkedIn: [AlMonther Abdulhafeez](https://www.linkedin.com/in/almonther-abdulhafeez-a3a48a267)
+
+<br/>
+<img src="https://cdn-icons-png.flaticon.com/128/2463/2463510.png" width=50 align=center>
+ Made with ❤️ by AlMonther <a href="https://github.com/AlMonther9" a>
+
