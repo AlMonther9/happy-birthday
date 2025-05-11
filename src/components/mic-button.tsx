@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, VolumeX, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -10,12 +10,16 @@ interface MicButtonProps {
   onSoundDetected: () => void;
   isActive: boolean;
   threshold?: number;
+  // Add a cooldown period option
+  cooldownMs?: number;
 }
 
 export default function MicButton({
   onSoundDetected,
   isActive,
   threshold = 15,
+  // Default 1000ms cooldown
+  cooldownMs = 1000,
 }: MicButtonProps) {
   const [soundLevel, setSoundLevel] = useState(0);
   const [permissionState, setPermissionState] = useState<
@@ -23,6 +27,7 @@ export default function MicButton({
   >("prompt");
   const [showTooltip, setShowTooltip] = useState(false);
   const [gender, setGender] = useState<"male" | "female">("male");
+  const [isInCooldown, setIsInCooldown] = useState(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
@@ -31,16 +36,36 @@ export default function MicButton({
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  // Track if component is mounted to prevent memory leaks
+  const isMountedRef = useRef(true);
+
+  // Memoize the onSoundDetected callback to prevent unnecessary re-renders
+  const handleSoundDetected = useCallback(() => {
+    if (!isInCooldown) {
+      setIsInCooldown(true);
+      onSoundDetected();
+
+      // Set cooldown timer
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          setIsInCooldown(false);
+        }
+      }, cooldownMs);
+    }
+  }, [onSoundDetected, isInCooldown, cooldownMs]);
 
   // Get gender from URL
   useEffect(() => {
     const urlGender = searchParams.get("gender");
-    if (urlGender === "female") {
-      setGender("female");
-    } else {
-      setGender("male");
-    }
+    setGender(urlGender === "female" ? "female" : "male");
   }, [searchParams]);
+
+  // Set mount state on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Check if browser supports microphone
   useEffect(() => {
@@ -54,15 +79,19 @@ export default function MicButton({
       navigator.permissions
         .query({ name: "microphone" as PermissionName })
         .then((permissionStatus) => {
-          setPermissionState(
-            permissionStatus.state as "prompt" | "granted" | "denied"
-          );
-
-          permissionStatus.onchange = () => {
+          if (isMountedRef.current) {
             setPermissionState(
               permissionStatus.state as "prompt" | "granted" | "denied"
             );
-          };
+
+            permissionStatus.onchange = () => {
+              if (isMountedRef.current) {
+                setPermissionState(
+                  permissionStatus.state as "prompt" | "granted" | "denied"
+                );
+              }
+            };
+          }
         })
         .catch((err) => {
           console.error("Permission query error:", err);
@@ -71,7 +100,7 @@ export default function MicButton({
   }, []);
 
   // Cleanup function to properly release microphone resources
-  const cleanupMicResources = () => {
+  const cleanupMicResources = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -90,9 +119,11 @@ export default function MicButton({
 
     // Close audio context
     if (audioContextRef.current?.state !== "closed") {
-      audioContextRef.current
-        ?.close()
-        .catch((err) => console.error("Error closing audio context:", err));
+      try {
+        audioContextRef.current?.close();
+      } catch (err) {
+        console.error("Error closing audio context:", err);
+      }
       audioContextRef.current = null;
     }
 
@@ -103,15 +134,17 @@ export default function MicButton({
     }
 
     // Reset sound level
-    setSoundLevel(0);
-  };
+    if (isMountedRef.current) {
+      setSoundLevel(0);
+    }
+  }, []);
 
   // Initialize microphone
-  const initMicrophone = async () => {
+  const initMicrophone = useCallback(async () => {
     // Clean up any existing resources first
     cleanupMicResources();
 
-    if (!isActive) return;
+    if (!isActive || !isMountedRef.current) return;
 
     try {
       // First check if we're in a secure context (HTTPS)
@@ -120,6 +153,13 @@ export default function MicButton({
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Check if we're still mounted after the async operation
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       streamRef.current = stream;
 
       const AudioContext =
@@ -142,23 +182,28 @@ export default function MicButton({
       analyserRef.current = analyser;
       microphoneRef.current = microphone;
 
-      setPermissionState("granted");
-      startListening();
+      if (isMountedRef.current) {
+        setPermissionState("granted");
+        startListening();
 
-      // Gender-specific message
-      const blowText =
-        gender === "female"
-          ? "انفخي أو تحدثي بصوت عالٍ"
-          : "انفخ أو تحدث بصوت عالٍ";
+        // Gender-specific message
+        const blowText =
+          gender === "female"
+            ? "انفخي أو تحدثي بصوت عالٍ"
+            : "انفخ أو تحدث بصوت عالٍ";
 
-      toast({
-        title: "تم تفعيل الميكروفون",
-        description: `${blowText} لإطفاء الشموع!`,
-        variant: "info",
-        duration: 3000,
-      });
+        toast({
+          title: "تم تفعيل الميكروفون",
+          description: `${blowText} لإطفاء الشموع!`,
+          variant: "info",
+          duration: 3000,
+        });
+      }
     } catch (error) {
       console.error("Microphone error:", error);
+
+      if (!isMountedRef.current) return;
+
       setPermissionState("denied");
 
       // More specific error message based on the error
@@ -193,20 +238,26 @@ export default function MicButton({
 
       // Automatically trigger manual blow after a short delay
       setTimeout(() => {
-        handleManualBlow();
+        if (isMountedRef.current) {
+          handleManualBlow();
+        }
       }, 1000);
     }
-  };
+  }, [isActive, gender, toast, cleanupMicResources]);
 
   // Start listening for sound
-  const startListening = () => {
-    if (!analyserRef.current || !isActive) return;
+  const startListening = useCallback(() => {
+    if (!analyserRef.current || !isActive || !isMountedRef.current) return;
 
     const bufferLength = analyserRef.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
+    // Keep track of consecutive frames above threshold
+    let framesAboveThreshold = 0;
+    const requiredFrames = 2; // Require 2 consecutive frames above threshold to trigger
+
     const checkSound = () => {
-      if (!isActive) {
+      if (!isActive || !isMountedRef.current || !analyserRef.current) {
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current);
           animationFrameRef.current = null;
@@ -214,20 +265,54 @@ export default function MicButton({
         return;
       }
 
-      analyserRef.current!.getByteFrequencyData(dataArray);
-      const avg = dataArray.reduce((sum, val) => sum + val, 0) / bufferLength;
-      setSoundLevel(avg);
+      analyserRef.current.getByteFrequencyData(dataArray);
 
-      if (avg > threshold) {
-        onSoundDetected();
-        return;
+      // Calculate average, but focus on specific frequency range more likely to be blowing
+      // This helps filter out background noise
+      const lowFreqAvg =
+        dataArray
+          .slice(0, Math.floor(bufferLength * 0.3))
+          .reduce((sum, val) => sum + val, 0) /
+        (bufferLength * 0.3);
+
+      const midFreqAvg =
+        dataArray
+          .slice(Math.floor(bufferLength * 0.3), Math.floor(bufferLength * 0.7))
+          .reduce((sum, val) => sum + val, 0) /
+        (bufferLength * 0.4);
+
+      // Weight mid frequencies more heavily as they're typical for blowing sounds
+      const weightedAvg = lowFreqAvg * 0.3 + midFreqAvg * 0.7;
+
+      if (isMountedRef.current) {
+        setSoundLevel(weightedAvg);
+      }
+
+      if (weightedAvg > threshold) {
+        framesAboveThreshold++;
+        if (framesAboveThreshold >= requiredFrames && !isInCooldown) {
+          handleSoundDetected();
+          framesAboveThreshold = 0;
+          return;
+        }
+      } else {
+        framesAboveThreshold = 0;
       }
 
       animationFrameRef.current = requestAnimationFrame(checkSound);
     };
 
     animationFrameRef.current = requestAnimationFrame(checkSound);
-  };
+  }, [isActive, threshold, isInCooldown, handleSoundDetected]);
+
+  // Handle manual blow function
+  const handleManualBlow = useCallback(() => {
+    if (permissionState === "denied" || permissionState === "unsupported") {
+      handleSoundDetected();
+    } else {
+      initMicrophone();
+    }
+  }, [permissionState, handleSoundDetected, initMicrophone]);
 
   // Effect to handle active state changes
   useEffect(() => {
@@ -250,16 +335,13 @@ export default function MicButton({
     return () => {
       cleanupMicResources();
     };
-  }, [isActive, permissionState]);
-
-  // Add a manual blow function that can be called when clicking on the microphone icon
-  const handleManualBlow = () => {
-    if (permissionState === "denied" || permissionState === "unsupported") {
-      onSoundDetected();
-    } else {
-      initMicrophone();
-    }
-  };
+  }, [
+    isActive,
+    permissionState,
+    startListening,
+    initMicrophone,
+    cleanupMicResources,
+  ]);
 
   // Gender-specific tooltip text
   const micActiveText =
@@ -296,15 +378,22 @@ export default function MicButton({
 
         <button
           onClick={handleManualBlow}
-          className="cursor-pointer focus:outline-none relative"
+          className={`cursor-pointer focus:outline-none relative ${
+            isInCooldown ? "opacity-50" : ""
+          }`}
           aria-label={
             permissionState === "granted"
               ? "Microphone active"
               : "Activate microphone or blow manually"
           }
+          disabled={isInCooldown}
         >
           {permissionState === "granted" ? (
-            <Mic className="h-6 w-6 text-white animate-pulse" />
+            <Mic
+              className={`h-6 w-6 text-white ${
+                isInCooldown ? "" : "animate-pulse"
+              }`}
+            />
           ) : permissionState === "denied" ? (
             <VolumeX className="h-6 w-6 text-pink-500 hover:text-pink-600 transition-colors" />
           ) : (
@@ -320,7 +409,11 @@ export default function MicButton({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
             >
-              {permissionState === "granted" ? micActiveText : micInactiveText}
+              {permissionState === "granted"
+                ? isInCooldown
+                  ? "الرجاء الانتظار قليلاً..."
+                  : micActiveText
+                : micInactiveText}
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-black/80 rotate-45"></div>
             </motion.div>
           )}
